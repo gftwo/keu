@@ -1295,12 +1295,23 @@
         /* Sidebar proyek/filter Tugas Pro dijadikan popup mengambang (bukan kolom kiri-kanan) */
         #tabTodo .app { grid-template-columns: 1fr !important; }
         #tabTodo .side {
-            position: fixed !important; top: 0; left: 68px; bottom: 0; width: 280px; max-width: calc(88vw - 68px);
-            z-index: 150;
-            transform: translateX(-100%); transition: transform .32s var(--ease-out);
-            box-shadow: var(--sh-lg) !important; border-right: 1px solid var(--border-light);
+            position: fixed !important; top: 50%; left: 50%; bottom: auto;
+            width: min(320px, 90vw); max-height: min(600px, 82vh);
+            display: flex; flex-direction: column; overflow-y: auto;
+            border-radius: var(--r-lg, 20px); z-index: 150;
+            transform: translate(-50%, -50%) scale(0.94); opacity: 0; pointer-events: none;
+            transition: transform .22s var(--ease-out), opacity .18s ease;
+            box-shadow: var(--sh-lg) !important; border: 1px solid var(--border-light);
         }
-        #tabTodo .side.open { transform: none; }
+        #tabTodo .side.open { transform: translate(-50%, -50%) scale(1); opacity: 1; pointer-events: auto; }
+        #tabTodo .side .brand { position: relative; padding-right: 2.2rem; }
+        #tabTodo .side-close-btn {
+            position: absolute; top: var(--sp-3, 12px); right: var(--sp-3, 12px);
+            width: 28px; height: 28px; border-radius: 50%; border: none;
+            background: var(--surface-2); color: var(--muted); cursor: pointer;
+            display: flex; align-items: center; justify-content: center; transition: all .15s var(--ease-out);
+        }
+        #tabTodo .side-close-btn:hover { background: var(--p-high-tint); color: var(--p-high); }
         #tabTodo .scrim { z-index: 149; }
         #tabTodo .menu-btn { display: grid !important; }
         #tabTodo .app {
@@ -2031,6 +2042,7 @@
         <div class="brand-name">Tugas Pro</div>
         <div class="brand-sub">To-do harian</div>
       </div>
+      <button class="side-close-btn" type="button" title="Tutup" onclick="document.getElementById('side').classList.remove('open');document.getElementById('scrim').classList.remove('on');"><i data-lucide="x" style="width:15px;height:15px"></i></button>
     </div>
 
     <button class="side-add" id="sideAddBtn" type="button"><i data-lucide="plus" style="width:17px;height:17px"></i>Tambah Tugas</button>
