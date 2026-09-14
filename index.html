@@ -572,7 +572,7 @@
             padding: 1.5rem 1.15rem; gap: 1.35rem; overflow-y: auto;
             box-shadow: 4px 0 24px rgba(0,0,0,0.25);
             position: fixed; top: 0; left: 68px; bottom: 0; z-index: 101;
-            transform: translateX(-100%); transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+            transform: translateX(calc(-100% - 68px)); transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
         }
         .sn-panel.is-open { transform: translateX(0); }
         .sn-brand { display: flex; align-items: center; gap: 0.65rem; }
