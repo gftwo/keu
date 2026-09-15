@@ -1696,14 +1696,6 @@
                     <div class="form-group"><label>📂 Kategori</label><select id="txCategory" required></select></div>
                     <div class="form-group"><label>📝 Keterangan</label><input type="text" id="txNote" placeholder="Cth: Gaji bulanan, Bensin, dll"></div>
 
-                    <div class="form-group" style="background: var(--bg-body); padding: 0.85rem 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-light);">
-                        <label class="switch-wrapper" style="margin:0;">
-                            <div><span class="font-bold text-sm">🚫 Kecualikan dari Budget</span><p class="text-xs text-muted" style="margin-top:0.15rem;">Transaksi tetap tercatat normal di Riwayat & Laporan, cuma gak ngurangin jatah Budget & Alokasi.</p></div>
-                            <input type="checkbox" id="txExcludeBudget">
-                            <div class="switch"></div>
-                        </label>
-                    </div>
-
                     <div class="form-group" style="background: var(--bg-body); padding: 1.25rem; border-radius: var(--radius-md); border: 1px solid var(--border-light);">
                         <label class="switch-wrapper" style="margin: 0;">
                             <div><span class="font-bold text-sm">Otomatisasi Rutin</span><p class="text-xs text-muted" style="margin-top:0.25rem;">Jadikan transaksi berulang otomatis.</p></div>
@@ -2033,7 +2025,7 @@
                 
                 <div style="text-align: center; margin-top: 2rem;">
                     <button type="button" class="text-xs font-bold" style="background:none; border:none; color:var(--primary); cursor:pointer; padding:0.5rem;" onclick="App.UI.openChangelog()">📜 Lihat Riwayat Update</button>
-                    <p class="text-xs font-bold" id="appVersionFooter" style="opacity:0.5; margin-top:0.35rem;">Keuangan Pro v8.7</p>
+                    <p class="text-xs font-bold" id="appVersionFooter" style="opacity:0.5; margin-top:0.35rem;">Keuangan Pro v8.8</p>
                 </div>
             </div>
         </main>
@@ -2527,7 +2519,13 @@
                 if(!window.App || !App.UI || !App.UI.switchMainGroup){ setTimeout(patch, 50); return; }
                 if(App.UI._railPatched) return;
                 const orig = App.UI.switchMainGroup.bind(App.UI);
-                App.UI.switchMainGroup = function(group){ orig(group); syncRail(group); closePanel(); };
+                App.UI.switchMainGroup = function(group){
+                    orig(group); syncRail(group); closePanel();
+                    // Render ulang saat tab baru kelihatan, biar animasi kartu tugas & data terbaru
+                    // gak "nyangkut" gara-gara sempat dirender waktu tab masih disembunyikan (display:none).
+                    if(group==='tugas' && window.TugasProBridge && window.TugasProBridge.refresh) window.TugasProBridge.refresh();
+                    if(group==='kuliah' && window.KuliahProBridge && window.KuliahProBridge.refresh) window.KuliahProBridge.refresh();
+                };
                 App.UI._railPatched = true;
                 syncRail(App.UI._activeGroup || 'keuangan');
             }
@@ -2950,10 +2948,15 @@
                 ],
                 AccountIcons: { cash: '💵', saldo: '🪪' },
                 Changelog: [
+                    { version: 'v8.8', date: 'September 2026', items: [
+                        'Perbaikan bug besar: nambah/ubah data di tab Kuliah (absen, tugas, dll) sebelumnya selalu "nyeret" balik ke tab Keuangan — sekarang gak lagi',
+                        'Tab Task: tugas yang diselesaikan hari ini sekarang tetap muncul di grup "Selesai" pada tampilan Hari Ini, gak ngilang gitu aja',
+                        'Tab Task: benerin render pas pertama buka tab (dulu kadang harus pencet filter dulu biar tugas kelihatan)',
+                        '"Kecualikan dari Budget" dihapus dari form Tambah Transaksi — cukup diatur & ditandai di Riwayat/Edit transaksi'
+                    ]},
                     { version: 'v8.7', date: 'September 2026', items: [
                         'Tab Kuliah (jadwal, absensi/kehadiran, tugas kuliah) sekarang ikut sinkron ke akun — sebelumnya cuma tersimpan di HP masing-masing',
                         'Backup Manual (.json) sekarang lengkap: transfer, utang/piutang, template cepat, dan data Kuliah ikut ke-backup & ke-restore',
-                        '"Kecualikan dari Budget" sekarang bisa langsung dicentang saat menambah transaksi baru, gak perlu edit dulu',
                         'Perbaikan bug Tugas Pro: tugas berulang yang ditandai selesai lewat halaman edit sekarang ikut maju ke jadwal berikutnya, sama seperti lewat checklist',
                         'Tugas (Pro & Kuliah) yang sudah selesai sekarang nampilin kapan tepatnya diselesaikan',
                         'Popup "Jadwal Kamu Hari Ini" sekarang gabungin tugas Tugas Pro & deadline tugas Kuliah dalam satu tampilan'
@@ -3165,6 +3168,7 @@
                 },
                 handleLogout() {
                     App.UI.closeModal('logoutModal');
+                    App.State._navInitDone = false;
                     if (this.isDummy) {
                         localStorage.removeItem('dummy_user_v8');
                         App.UI.showToast('Berhasil keluar. Sampai jumpa! 👋', 'info');
@@ -3391,7 +3395,9 @@
                             if(data.kuliah && window.KuliahProBridge) window.KuliahProBridge.applyExternalData(data.kuliah);
                             if(data.settings) App.State.settings = {...App.State.settings, ...data.settings};
                         } else { this.save(); }
-                        App.State.isLoading = false; App.Premium.applyState(); App.Theme.init(); App.UI.renderCategoriesSelect(); App.UI.switchMainGroup('keuangan'); App.UI.renderAll(); setTimeout(() => { if(window.AppNotifyQueue) window.AppNotifyQueue.register('finance-alert', () => App.Handlers.checkStartupAlerts()); else App.Handlers.checkStartupAlerts(); }, 700);
+                        App.State.isLoading = false; App.Premium.applyState(); App.Theme.init(); App.UI.renderCategoriesSelect();
+                        if(!App.State._navInitDone){ App.State._navInitDone = true; App.UI.switchMainGroup('keuangan'); }
+                        App.UI.renderAll(); setTimeout(() => { if(window.AppNotifyQueue) window.AppNotifyQueue.register('finance-alert', () => App.Handlers.checkStartupAlerts()); else App.Handlers.checkStartupAlerts(); }, 700);
                         return;
                     }
 
@@ -3408,7 +3414,13 @@
                             if(data.kuliah && window.KuliahProBridge) window.KuliahProBridge.applyExternalData(data.kuliah);
                             if(data.settings) App.State.settings = {...App.State.settings, ...data.settings};
                         } else { this.save(); }
-                        App.State.isLoading = false; App.Premium.applyState(); App.Theme.init(); App.UI.renderCategoriesSelect(); App.UI.switchMainGroup('keuangan'); App.UI.renderAll(); setTimeout(() => { if(window.AppNotifyQueue) window.AppNotifyQueue.register('finance-alert', () => App.Handlers.checkStartupAlerts()); else App.Handlers.checkStartupAlerts(); }, 700);
+                        App.State.isLoading = false; App.Premium.applyState(); App.Theme.init(); App.UI.renderCategoriesSelect();
+                        // Cuma pindah ke tab Keuangan sekali di awal (pas baru login/buka app), bukan tiap kali
+                        // ada data baru masuk — sebelumnya ini bikin app "kelempar balik" ke Keuangan tiap kali
+                        // nambah/ubah apa pun di tab Kuliah (absen, tugas, dst) karena tiap App.DB.save() bikin
+                        // listener realtime ini kepanggil lagi.
+                        if(!App.State._navInitDone){ App.State._navInitDone = true; App.UI.switchMainGroup('keuangan'); }
+                        App.UI.renderAll(); setTimeout(() => { if(window.AppNotifyQueue) window.AppNotifyQueue.register('finance-alert', () => App.Handlers.checkStartupAlerts()); else App.Handlers.checkStartupAlerts(); }, 700);
                     }, (error) => { console.error("Firebase DB Error:", error); App.UI.updateSyncStatus('error'); });
                 },
                 save() {
@@ -4584,7 +4596,7 @@
                     const amtDisp2 = document.getElementById('txAmountDisplay'); if(amtDisp2) amtDisp2.style.outline = ''; errorEl.classList.remove('show');
                     if (document.getElementById('txRecurring').checked && !App.State.isPremium && App.State.recurring.length >= App.Config.FreeLimits.recurring) { App.UI.showToast(`Batas otomatisasi (${App.Config.FreeLimits.recurring}) tercapai.`, 'error'); App.UI.showModal('premiumModal'); return; }
 
-                    const tx = { id: Date.now(), tanggal: document.getElementById('txDate').value, jenisAkun: document.getElementById('txAccount').value, subWallet: document.getElementById('txAccount').value === 'saldo' ? (document.getElementById('txSubWallet').value || null) : null, pemasukan: p, pengeluaran: out, kategori: document.getElementById('txCategory').value, keterangan: document.getElementById('txNote').value.trim(), excludeFromBudget: !!document.getElementById('txExcludeBudget').checked };
+                    const tx = { id: Date.now(), tanggal: document.getElementById('txDate').value, jenisAkun: document.getElementById('txAccount').value, subWallet: document.getElementById('txAccount').value === 'saldo' ? (document.getElementById('txSubWallet').value || null) : null, pemasukan: p, pengeluaran: out, kategori: document.getElementById('txCategory').value, keterangan: document.getElementById('txNote').value.trim(), excludeFromBudget: false };
                     App.State.transactions.push(tx);
 
                     if (document.getElementById('txRecurring').checked) {
@@ -5533,7 +5545,7 @@
   // ---- SMART LISTS ----
   const startOfToday = () => { const d=new Date(); d.setHours(0,0,0,0); return d; };
   const SMART = [
-    { id:'today', name:'Hari Ini', icon:'sun', match:(t)=> (!t.done && t.due && parseISO(t.due) <= startOfToday()) || (t.due===todayISO()) },
+    { id:'today', name:'Hari Ini', icon:'sun', match:(t)=> (!t.done && t.due && parseISO(t.due) <= startOfToday()) || (t.due===todayISO()) || (t.done && t.completedAt && new Date(t.completedAt).setHours(0,0,0,0) === startOfToday().getTime()) },
     { id:'upcoming', name:'Akan Datang', icon:'calendar-clock', match:(t)=> t.due && parseISO(t.due) > startOfToday() },
     { id:'all', name:'Semua Tugas', icon:'inbox', match:()=> true },
     { id:'flagged', name:'Prioritas', icon:'flag', match:(t)=> t.priority==='high' || t.priority==='med' },
